@@ -81,7 +81,7 @@
 </head>
 <body>
 
-    <h1>🍉 期末寶可夢球 🍉</h1>
+    <h1>🍉 期末大西瓜 🍉</h1>
     <div id="score-board">分數: <span id="score">0</span></div>
 
     <div id="game-container">
@@ -110,10 +110,13 @@
 
         // --- 2. 水果等級設定 (半徑、顏色、分數) ---
         const BALL_TYPES = [
-        { radius: 15, render: { sprite: { texture: 'https://play-lh.googleusercontent.com/_tOI_PmpiasqkU_eubE4XzyKQJFc9K1SzKrnwHXTSGr2RpwsU5SoCXSq6K5OiauDAlM=w200' } }, score: 1 },
-        { radius: 15, render: { sprite: { texture: 'https://i.pinimg.com/474x/e5/cc/d6/e5ccd68febbdb340b40f5301a30d2217.jpg' } }, score: 1 },
-        { radius: 15, render: { sprite: { texture: 'https://image.blip.kr/v1/file/431bde42553fecbb188662c55ea00280' } }, score: 1 },
-        { radius: 15, render: { sprite: { texture: 'https://preview.redd.it/kep1er-7th-mini-album-bubble-gum-new-banner-logo-v0-8ez4efhpktgf1.jpg?width=400&format=pjpg&auto=webp&s=0ec32bcfc396f7995e488ce070be733797ab13b5' } }, score: 1 },
+            { radius: 15, color: '#ff4d4d', score: 1 },  // 櫻桃
+            { radius: 23, color: '#ffaf40', score: 2 },  // 橘子
+            { radius: 32, color: '#fff200', score: 4 },  // 檸檬
+            { radius: 42, color: '#32ff7e', score: 8 },  // 奇異果
+            { radius: 55, color: '#7bc8f6', score: 16 }, // 番茄
+            { radius: 70, color: '#ae52d4', score: 32 }, // 葡萄
+            { radius: 90, color: '#ff4757', score: 64 }, // 大西瓜
         ];
 
         // --- 3. 初始化遊戲 ---
@@ -284,3 +287,4 @@
     </script>
 </body>
 </html>
+
