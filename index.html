@@ -110,13 +110,10 @@
 
         // --- 2. 水果等級設定 (半徑、顏色、分數) ---
         const BALL_TYPES = [
-            { radius: 15, color: 'https://commons.wikimedia.org/wiki/File:Pok%C3%A9_Ball_icon.svg', score: 1 },  // 櫻桃
-            { radius: 23, color: 'https://static.wikia.nocookie.net/pokemongo/images/4/45/Great_Ball.png/revision/latest?cb=20170620234738', score: 2 },  // 橘子
-            { radius: 32, color: 'https://static.wikia.nocookie.net/pokemongo/images/3/34/Ultra_Ball.png/revision/latest?cb=20170620234747', score: 4 },  // 檸檬
-            { radius: 42, color: 'https://img.yec.tw/zp/MerchandiseImages/CDE14F4D01-SP-12160250.jpg', score: 8 },  // 奇異果
-            { radius: 55, color: 'https://pokemongo.fandom.com/zh/wiki/%E7%B4%80%E5%BF%B5%E7%90%83', score: 16 }, // 番茄
-            { radius: 70, color: 'https://lh6.googleusercontent.com/proxy/fDp9muCgVo8_ebrh0pFn4Rqw6JqOhYGxvXzNyy-90x1rZYnvSyvlNPv8cSRRPXsin-LTkrwvsk4y4EegrnMsIsc6godKDLdLY0PbnByOv-vJ2VYV9g', score: 32 }, // 葡萄
-            
+        { radius: 15, render: { sprite: { texture: 'https://static.wikia.nocookie.net/pokemongo/images/8/87/Pok%C3%A9_Ball.png/revision/latest?cb=20160708034044&path-prefix=zh' } }, score: 1 },
+        { radius: 15, render: { sprite: { texture: 'https://static.wikia.nocookie.net/pokemongo/images/4/45/Great_Ball.png/revision/latest?cb=20170620234738' } }, score: 1 },
+        { radius: 15, render: { sprite: { texture: 'https://static.wikia.nocookie.net/pokemongo/images/3/34/Ultra_Ball.png/revision/latest?cb=20170620234747' } }, score: 1 },
+        { radius: 15, render: { sprite: { texture: 'https://static.wikia.nocookie.net/pokemongo/images/8/8d/Premier_Ball.png/revision/latest?cb=20170620212402' } }, score: 1 },
         ];
 
         // --- 3. 初始化遊戲 ---
