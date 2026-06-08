@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>完美圓形裁切-西瓜遊戲</title>
+    <title>完美乾淨圓形-西瓜遊戲</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <style>
         body {
@@ -50,7 +50,6 @@ let score = 0;
 let currentFruit = null;
 let isReadyToDrop = true;
 
-// 儲存所有圖片物件的快取，確保圖片只會載入一次
 const ImageCache = {};
 
 // 🍓 水果清單
@@ -62,7 +61,7 @@ const FRUIT_TYPES = [
         score: 1,
         texture: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=200&auto=format&fit=crop"
     },
-    { label: "🍓", radius: 28, color: "#ff7675", score: 3 ,  texture: "https://3c.yipee.cc/wp-content/uploads/2018/04/8634d8b5dfe91d903321d5ef3a9ac4c6-300x299.jpg"},
+    { label: "🍓", radius: 28, color: "#ff7675", score: 3 , texture: "https://3c.yipee.cc/wp-content/uploads/2018/04/8634d8b5dfe91d903321d5ef3a9ac4c6-300x299.jpg"},
     { label: "🍇", radius: 36, color: "#a29bfe", score: 6 },
     { label: "🍊", radius: 44, color: "#fdcb6e", score: 10 },
     { label: "🍅", radius: 52, color: "#e17055", score: 15 },
@@ -80,7 +79,7 @@ const FRUIT_TYPES = [
     }
 ];
 
-// 預先載入所有圖片，避免遊戲中出現白屏
+// 預先載入圖片
 FRUIT_TYPES.forEach(fruit => {
     if (fruit.texture) {
         const img = new Image();
@@ -114,7 +113,7 @@ const leftWall = Bodies.rectangle(10, HEIGHT / 2, 20, HEIGHT, wallOptions);
 const rightWall = Bodies.rectangle(WIDTH - 10, HEIGHT / 2, 20, HEIGHT, wallOptions);
 Composite.add(world, [ground, leftWall, rightWall]);
 
-// --- 💡 修正後的生成邏輯 ---
+// --- 💡 終極修改點：完全對內建渲染隱形 ---
 function createFruit(x, y, level, isStatic = false) {
     const config = FRUIT_TYPES[level];
     
@@ -124,9 +123,9 @@ function createFruit(x, y, level, isStatic = false) {
         friction: 0.1,
         label: "fruit",
         render: {
-            // 關鍵修改：不把 texture 傳給 Matter.js
-            // 只設定顏色作為底色（如果圖片還沒載入完時顯示），這樣背景就不會出現正方形了！
-            fillStyle: config.color 
+            // 🌟 關鍵：強制把可見度設為 false！
+            // 這樣 Matter.js 的內建渲染器就會「完全略過這顆球」，絕對不會畫任何背景或方框。
+            visible: false 
         }
     };
     
@@ -205,7 +204,7 @@ Events.on(engine, 'collisionStart', (event) => {
     });
 });
 
-// --- 💡 完美裁切與繪製邏輯 ---
+// --- 🌟 我們自己全權掌控繪圖：完美裁切與旋轉 ---
 Events.on(render, 'afterRender', () => {
     const context = render.context;
     const bodies = Composite.allBodies(world);
@@ -221,23 +220,33 @@ Events.on(render, 'afterRender', () => {
         context.rotate(body.angle);
 
         if (fruitConfig.texture) {
-            // 從我們自訂的快取中抓取圖片
             const img = ImageCache[fruitConfig.texture];
             if (img && img.complete) {
                 context.beginPath();
                 context.arc(0, 0, fruitConfig.radius, 0, Math.PI * 2);
                 context.closePath();
-                context.clip(); // 限制只在圓形內繪製
+                context.clip(); 
 
-                // 完美填滿圓形
                 const size = fruitConfig.radius * 2;
                 context.drawImage(img, -fruitConfig.radius, -fruitConfig.radius, size, size);
+            } else {
+                // 如果網路圖片還在載入中，先畫一個純色圓圈頂替，絕對不畫方塊
+                context.beginPath();
+                context.arc(0, 0, fruitConfig.radius, 0, Math.PI * 2);
+                context.fillStyle = fruitConfig.color;
+                context.fill();
             }
         } else {
-            // 如果沒有圖片，維持原本漂亮的 Emoji 文字
+            // 沒有圖片的水果，由我們自己幫它畫上圓形底色和 Emoji
+            context.beginPath();
+            context.arc(0, 0, fruitConfig.radius, 0, Math.PI * 2);
+            context.fillStyle = fruitConfig.color;
+            context.fill();
+
             context.font = `${fruitConfig.radius * 1.2}px Arial`;
             context.textAlign = 'center';
             context.textBaseline = 'middle';
+            context.fillStyle = "#ffffff"; // 讓文字帶有一點對比
             context.fillText(fruitConfig.label, 0, 0);
         }
         
