@@ -3,33 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的簡易西瓜遊戲</title>
+    <title>我的自訂圖片西瓜遊戲</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #f0f0f0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            font-family: Arial, sans-serif;
-        }
-        #game-container {
-            position: relative;
-            margin-top: 20px;
-        }
-        #score-board {
-            font-size: 24px;
-            font-weight: bold;
-            margin-top: 10px;
-            color: #333;
-        }
-        #hint {
-            font-size: 14px;
-            color: #666;
-            margin-top: 5px;
-        }
+        body { margin: 0; padding: 0; background-color: #f0f0f0; display: flex; flex-direction: column; align-items: center; font-family: Arial, sans-serif; }
+        #game-container { position: relative; margin-top: 20px; }
+        #score-board { font-size: 24px; font-weight: bold; margin-top: 10px; color: #333; }
+        #hint { font-size: 14px; color: #666; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -39,7 +19,6 @@
     <div id="game-container"></div>
 
 <script>
-// --- 1. 遊戲基礎設定與水果資料 ---
 const { Engine, Render, Runner, Bodies, Composite, Body, Events } = Matter;
 
 const container = document.getElementById('game-container');
@@ -51,7 +30,8 @@ let score = 0;
 let currentFruit = null;
 let isReadyToDrop = true;
 
-// 水果進化鏈設定 (等級 0 到 10)
+// --- 💡 這裡修改水果設定 ---
+// 如果你想換成網路圖片，只要在該水果加上 texture: "圖片網址", 並且給它圖片的原始寬度即可。
 const FRUIT_TYPES = [
     { label: "🍒", radius: 15, color: "#ff4d4d", score: 1 },
     { label: "🍓", radius: 22, color: "#ff7675", score: 3 },
@@ -63,118 +43,114 @@ const FRUIT_TYPES = [
     { label: "🍑", radius: 80, color: "#fab1a0", score: 36 },
     { label: "🍍", radius: 92, color: "#fd79a8", score: 45 },
     { label: "🍈", radius: 105, color: "#55efc4", score: 55 },
-    { label: "🍉", radius: 120, color: "#2ecc71", score: 66 }
+    
+    // 【西瓜範例】：這裡使用了外部的 PNG 圖片網址
+    { 
+        label: "🍉", 
+        radius: 120, 
+        color: "#2ecc71", 
+        score: 66, 
+        texture: "https://cdn-icons-png.flaticon.com/512/3195/3195843.png", // 外部圖片網址
+        originalWidth: 512 // 這張網址圖片的原始寬度是 512 像素
+    }
 ];
 
-// --- 2. 初始化物理引擎與渲染器 ---
-const engine = Engine.create({ gravity: { y: 1.2 } }); // 稍微增加重力感
+const engine = Engine.create({ gravity: { y: 1.2 } });
 const world = engine.world;
 
 const render = Render.create({
     element: container,
     engine: engine,
-    options: {
-        width: WIDTH,
-        height: HEIGHT,
-        wireframes: false, // 關閉線框模式以顯示色彩
-        background: '#fff9e6'
-    }
+    options: { width: WIDTH, height: HEIGHT, wireframes: false, background: '#fff9e6' }
 });
 
 Render.run(render);
 const runner = Runner.create();
 Runner.run(runner, engine);
 
-// --- 3. 建立遊戲邊界 (牆壁與地板) ---
 const wallOptions = { isStatic: true, render: { fillStyle: '#8d6e63' } };
 const ground = Bodies.rectangle(WIDTH / 2, HEIGHT - 10, WIDTH, 20, wallOptions);
 const leftWall = Bodies.rectangle(10, HEIGHT / 2, 20, HEIGHT, wallOptions);
 const rightWall = Bodies.rectangle(WIDTH - 10, HEIGHT / 2, 20, HEIGHT, wallOptions);
 Composite.add(world, [ground, leftWall, rightWall]);
 
-// --- 4. 水果生成邏輯 ---
+// --- 💡 自動處理圖片與文字的生成邏輯 ---
 function createFruit(x, y, level, isStatic = false) {
     const config = FRUIT_TYPES[level];
     
-    // 建立圓形物體
-    const fruit = Bodies.circle(x, y, config.radius, {
+    const options = {
         isStatic: isStatic,
-        restitution: 0.2, // 彈性
-        friction: 0.1,   // 摩擦力
+        restitution: 0.2,
+        friction: 0.1,
         label: "fruit",
-        render: {
-            fillStyle: config.color
-        }
-    });
+        render: {}
+    };
+
+    // 判斷是否有外部圖片網址
+    if (config.texture) {
+        // 計算縮放比例：(目標直徑) / 圖片原始寬度
+        const scale = (config.radius * 2) / (config.originalWidth || 100);
+        options.render.sprite = {
+            texture: config.texture,
+            xScale: scale,
+            yScale: scale
+        };
+    } else {
+        options.render.fillStyle = config.color;
+    }
     
-    // 自訂屬性供後續邏輯判斷
+    const fruit = Bodies.circle(x, y, config.radius, options);
     fruit.fruitLevel = level;
     
-    // 畫出水果圖示 (利用 Matter.js 的 render text 技巧)
-    fruit.render.text = {
-        content: config.label,
-        size: config.radius * 1.2
-    };
+    // 如果沒有圖片，才渲染 Emoji 文字
+    if (!config.texture) {
+        fruit.render.text = {
+            content: config.label,
+            size: config.radius * 1.2
+        };
+    }
 
     return fruit;
 }
 
-// 準備下一顆投擲的水果 (只會出現 0~4 等級的小水果)
 function spawnNextFruit() {
     if (!isReadyToDrop) return;
-    
-    const randomLevel = Math.floor(Math.random() * 5); // 0 到 4
-    // 預設生成在頂部中央
+    const randomLevel = Math.floor(Math.random() * 5);
     currentFruit = createFruit(WIDTH / 2, 50, randomLevel, true);
     Composite.add(world, currentFruit);
 }
 
-// --- 5. 滑鼠操控與釋放 ---
 window.addEventListener('mousemove', (e) => {
     if (!currentFruit || currentFruit.isStatic === false) return;
-    
-    // 獲取滑鼠在遊戲區域內的相對 X 座標
     const rect = container.getBoundingClientRect();
     let mouseX = e.clientX - rect.left;
-    
-    // 限制不超出牆壁
     const minX = 30 + FRUIT_TYPES[currentFruit.fruitLevel].radius;
     const maxX = WIDTH - 30 - FRUIT_TYPES[currentFruit.fruitLevel].radius;
     if (mouseX < minX) mouseX = minX;
     if (mouseX > maxX) mouseX = maxX;
-    
-    // 讓水果跟隨滑鼠左右移動
     Body.setPosition(currentFruit, { x: mouseX, y: 50 });
 });
 
 window.addEventListener('click', () => {
     if (!currentFruit || !isReadyToDrop) return;
-    
-    // 釋放水果：解除靜態狀態，讓它受重力下落
     isReadyToDrop = false;
     Body.setStatic(currentFruit, false);
-    
-    // 延遲 1 秒後才能投擲下一顆，防止連續狂點
     setTimeout(() => {
         isReadyToDrop = true;
         spawnNextFruit();
     }, 1000);
 });
 
-// --- 6. 核心：碰撞升級邏輯 ---
 Events.on(engine, 'collisionStart', (event) => {
     const pairs = event.pairs;
-    
     pairs.forEach((pair) => {
         const bodyA = pair.bodyA;
         const bodyB = pair.bodyB;
         
-        // 確保碰撞的兩者都是水果，且等級相同
         if (bodyA.label === "fruit" && bodyB.label === "fruit") {
             if (bodyA.fruitLevel === bodyB.fruitLevel) {
                 const currentLevel = bodyA.fruitLevel;
                 
-                // 如果已經是最大顆的西瓜，相撞就直接消失
                 if (currentLevel >= FRUIT_TYPES.length - 1) {
                     Composite.remove(world, [bodyA, bodyB]);
                     score += 100;
@@ -182,23 +158,17 @@ Events.on(engine, 'collisionStart', (event) => {
                     return;
                 }
                 
-                // 計算兩個水果的中心點，作為新水果的生成位置
                 const newX = (bodyA.position.x + bodyB.position.x) / 2;
                 const newY = (bodyA.position.y + bodyB.position.y) / 2;
                 
-                // 防止重複觸發碰撞導致多次生成
-                // 藉由將 level 設為不同來標記已處理
                 bodyA.fruitLevel = -1;
                 bodyB.fruitLevel = -1;
                 
-                // 移除舊水果
                 Composite.remove(world, [bodyA, bodyB]);
                 
-                // 生成高一級的新水果
                 const nextFruit = createFruit(newX, newY, currentLevel + 1, false);
                 Composite.add(world, nextFruit);
                 
-                // 加分並更新畫面
                 score += FRUIT_TYPES[currentLevel].score;
                 scoreDisplay.innerText = score;
             }
@@ -206,8 +176,7 @@ Events.on(engine, 'collisionStart', (event) => {
     });
 });
 
-// --- 7. 優化：客製化渲染水果表情 (Emoji) ---
-// Matter.js 預設不支援文字，這裡用原生 Canvas 語法幫圓形畫上表情
+// 負責把沒有圖片的水果畫上 Emoji 表情
 Events.on(render, 'afterRender', () => {
     const context = render.context;
     const bodies = Composite.allBodies(world);
@@ -227,9 +196,7 @@ Events.on(render, 'afterRender', () => {
     });
 });
 
-// 啟動遊戲
 spawnNextFruit();
-
 </script>
 </body>
 </html>
