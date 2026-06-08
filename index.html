@@ -3,13 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的自訂圖片西瓜遊戲</title>
+    <title>圓形裁切版-西瓜遊戲</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <style>
-        body { margin: 0; padding: 0; background-color: #f0f0f0; display: flex; flex-direction: column; align-items: center; font-family: Arial, sans-serif; }
-        #game-container { position: relative; margin-top: 20px; }
-        #score-board { font-size: 24px; font-weight: bold; margin-top: 10px; color: #333; }
-        #hint { font-size: 14px; color: #666; margin-top: 5px; }
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: Arial, sans-serif;
+        }
+        #game-container {
+            position: relative;
+            margin-top: 20px;
+        }
+        #score-board {
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 10px;
+            color: #333;
+        }
+        #hint {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
@@ -19,6 +39,7 @@
     <div id="game-container"></div>
 
 <script>
+// --- 1. 遊戲基礎設定與水果資料 ---
 const { Engine, Render, Runner, Bodies, Composite, Body, Events } = Matter;
 
 const container = document.getElementById('game-container');
@@ -30,51 +51,62 @@ let score = 0;
 let currentFruit = null;
 let isReadyToDrop = true;
 
-// --- 💡 這裡修改水果設定 ---
-// 如果你想換成網路圖片，只要在該水果加上 texture: "圖片網址", 並且給它圖片的原始寬度即可。
+// 🍓 水果清單：你想換圖片，只要修改 texture 欄位成你的網路圖片網址即可！
 const FRUIT_TYPES = [
-    { label: "🍒", radius: 15, color: "#ff4d4d", score: 1 ,texture: "https://3c.yipee.cc/wp-content/uploads/2018/04/8634d8b5dfe91d903321d5ef3a9ac4c6-300x299.jpg"},
-    { label: "🍓", radius: 22, color: "#ff7675", score: 3 ,texture: "https://3c.yipee.cc/wp-content/uploads/2016/08/d3692a5499c11fd1ef7c22da623266c0.jpg"},
-    { label: "🍇", radius: 30, color: "#a29bfe", score: 6 ,texture: "https://3c.yipee.cc/wp-content/uploads/2016/08/b4924cbebf02fc7a5c22a7ba3c012a5a.jpg" },
-    { label: "🍊", radius: 38, color: "#fdcb6e", score: 10 ,texture: "https://3c.yipee.cc/wp-content/uploads/2016/08/9a06c67057291068748ac97a158c55c0.jpg"},
-    { label: "🍅", radius: 48, color: "#e17055", score: 15 },
-    { label: "🍎", radius: 58, color: "#d63031", score: 21 },
-    { label: "🍐", radius: 68, color: "#ffeaa7", score: 28 },
-    { label: "🍑", radius: 80, color: "#fab1a0", score: 36 },
-    { label: "🍍", radius: 92, color: "#fd79a8", score: 45 },
-    { label: "🍈", radius: 105, color: "#55efc4", score: 55 },
-    
-    // 【西瓜範例】：這裡使用了外部的 PNG 圖片網址
+    { 
+        label: "🍒", 
+        radius: 20, // 稍微放大一點讓圖片更清楚
+        color: "#ff4d4d", 
+        score: 1,
+        // 💡 範例：這是一張正方形的貓咪網路照片，程式會自動把它切成圓形！
+        texture: "https://3c.yipee.cc/wp-content/uploads/2018/04/8634d8b5dfe91d903321d5ef3a9ac4c6-300x299.jpg"
+    },
+    { label: "🍓", radius: 28, color: "#ff7675", score: 3 },
+    { label: "🍇", radius: 36, color: "#a29bfe", score: 6 },
+    { label: "🍊", radius: 44, color: "#fdcb6e", score: 10 },
+    { label: "🍅", radius: 52, color: "#e17055", score: 15 },
+    { label: "🍎", radius: 62, color: "#d63031", score: 21 },
+    { label: "🍐", radius: 72, color: "#ffeaa7", score: 28 },
+    { label: "🍑", radius: 84, color: "#fab1a0", score: 36 },
+    { label: "🍍", radius: 96, color: "#fd79a8", score: 45 },
+    { label: "🍈", radius: 110, color: "#55efc4", score: 55 },
     { 
         label: "🍉", 
-        radius: 120, 
+        radius: 125, 
         color: "#2ecc71", 
-        score: 66, 
-        texture: "https://cdn-icons-png.flaticon.com/512/3195/3195843.png", // 外部圖片網址
-        originalWidth: 512 // 這張網址圖片的原始寬度是 512 像素
+        score: 66,
+        // 💡 範例：最後的大西瓜也換成網路圖片
+        texture: "https://images.unsplash.com/photo-1589927986089-35812388d1f4?w=300&auto=format&fit=crop"
     }
 ];
 
+// --- 2. 初始化物理引擎 ---
 const engine = Engine.create({ gravity: { y: 1.2 } });
 const world = engine.world;
 
 const render = Render.create({
     element: container,
     engine: engine,
-    options: { width: WIDTH, height: HEIGHT, wireframes: false, background: '#fff9e6' }
+    options: {
+        width: WIDTH,
+        height: HEIGHT,
+        wireframes: false, // 必須關閉線框，否則看不到圖片
+        background: '#fff9e6'
+    }
 });
 
 Render.run(render);
 const runner = Runner.create();
 Runner.run(runner, engine);
 
+// 建立牆壁
 const wallOptions = { isStatic: true, render: { fillStyle: '#8d6e63' } };
 const ground = Bodies.rectangle(WIDTH / 2, HEIGHT - 10, WIDTH, 20, wallOptions);
 const leftWall = Bodies.rectangle(10, HEIGHT / 2, 20, HEIGHT, wallOptions);
 const rightWall = Bodies.rectangle(WIDTH - 10, HEIGHT / 2, 20, HEIGHT, wallOptions);
 Composite.add(world, [ground, leftWall, rightWall]);
 
-// --- 💡 自動處理圖片與文字的生成邏輯 ---
+// --- 3. 水果生成邏輯 ---
 function createFruit(x, y, level, isStatic = false) {
     const config = FRUIT_TYPES[level];
     
@@ -86,14 +118,10 @@ function createFruit(x, y, level, isStatic = false) {
         render: {}
     };
 
-    // 判斷是否有外部圖片網址
+    // 如果有設定網址，就讓 Matter.js 去背後載入圖片
     if (config.texture) {
-        // 計算縮放比例：(目標直徑) / 圖片原始寬度
-        const scale = (config.radius * 2) / (config.originalWidth || 100);
         options.render.sprite = {
-            texture: config.texture,
-            xScale: scale,
-            yScale: scale
+            texture: config.texture
         };
     } else {
         options.render.fillStyle = config.color;
@@ -101,46 +129,44 @@ function createFruit(x, y, level, isStatic = false) {
     
     const fruit = Bodies.circle(x, y, config.radius, options);
     fruit.fruitLevel = level;
-    
-    // 如果沒有圖片，才渲染 Emoji 文字
-    if (!config.texture) {
-        fruit.render.text = {
-            content: config.label,
-            size: config.radius * 1.2
-        };
-    }
 
     return fruit;
 }
 
 function spawnNextFruit() {
     if (!isReadyToDrop) return;
-    const randomLevel = Math.floor(Math.random() * 5);
+    const randomLevel = Math.floor(Math.random() * 5); // 隨機前5種
     currentFruit = createFruit(WIDTH / 2, 50, randomLevel, true);
     Composite.add(world, currentFruit);
 }
 
+// 滑鼠操控
 window.addEventListener('mousemove', (e) => {
     if (!currentFruit || currentFruit.isStatic === false) return;
     const rect = container.getBoundingClientRect();
     let mouseX = e.clientX - rect.left;
+    
     const minX = 30 + FRUIT_TYPES[currentFruit.fruitLevel].radius;
     const maxX = WIDTH - 30 - FRUIT_TYPES[currentFruit.fruitLevel].radius;
     if (mouseX < minX) mouseX = minX;
     if (mouseX > maxX) mouseX = maxX;
+    
     Body.setPosition(currentFruit, { x: mouseX, y: 50 });
 });
 
+// 點擊點放
 window.addEventListener('click', () => {
     if (!currentFruit || !isReadyToDrop) return;
     isReadyToDrop = false;
     Body.setStatic(currentFruit, false);
+    
     setTimeout(() => {
         isReadyToDrop = true;
         spawnNextFruit();
     }, 1000);
 });
 
+// 碰撞合成
 Events.on(engine, 'collisionStart', (event) => {
     const pairs = event.pairs;
     pairs.forEach((pair) => {
@@ -176,55 +202,47 @@ Events.on(engine, 'collisionStart', (event) => {
     });
 });
 
-// 負責把沒有圖片的水果畫上 Emoji 表情
-// --- 升級版：自動將正方形圖片裁剪成圓形並旋轉 ---
+// --- 4. 核心魔術：在畫布渲染時，自動把正方形裁切成圓形並旋轉 ---
 Events.on(render, 'afterRender', () => {
     const context = render.context;
     const bodies = Composite.allBodies(world);
     
     bodies.forEach((body) => {
-        // 處理有圖片（texture）的水果
-        if (body.render && body.render.sprite && body.render.sprite.texture) {
-            const fruitConfig = FRUIT_TYPES[body.fruitLevel];
-            if (!fruitConfig) return;
+        if (body.label !== "fruit") return;
+        
+        const fruitConfig = FRUIT_TYPES[body.fruitLevel];
+        if (!fruitConfig) return;
 
-            // 取得圖片物件
-            const img = render.textures[body.render.sprite.texture];
+        context.save();
+        context.translate(body.position.x, body.position.y);
+        context.rotate(body.angle);
+
+        if (fruitConfig.texture) {
+            // A. 有圖片的情況：裁剪成圓形
+            const img = render.textures[fruitConfig.texture];
             if (img && img.complete) {
-                context.save();
-                // 移動畫布中心到水果的物理位置
-                context.translate(body.position.x, body.position.y);
-                context.rotate(body.angle);
-
-                // 核心：畫一個圓形裁剪區域 (Clip)
                 context.beginPath();
                 context.arc(0, 0, fruitConfig.radius, 0, Math.PI * 2);
                 context.closePath();
-                context.clip(); // 接下來畫的圖片，超出這個圓形的部分會被隱藏
+                context.clip(); // 關鍵：只保留圓形區域
 
-                // 繪製圖片
+                // 把正方形圖片拉伸填滿這個圓形
                 const size = fruitConfig.radius * 2;
                 context.drawImage(img, -fruitConfig.radius, -fruitConfig.radius, size, size);
-                
-                context.restore();
             }
-        }
-        
-        // 處理沒有圖片、只顯示 Emoji 的小水果
-        if (body.render && body.render.text) {
-            const { content, size } = body.render.text;
-            context.font = `${size}px Arial`;
+        } else {
+            // B. 沒有圖片的情況：畫上原本的 Emoji
+            context.font = `${fruitConfig.radius * 1.2}px Arial`;
             context.textAlign = 'center';
             context.textBaseline = 'middle';
-            context.save();
-            context.translate(body.position.x, body.position.y);
-            context.rotate(body.angle);
-            context.fillText(content, 0, 0);
-            context.restore();
+            context.fillText(fruitConfig.label, 0, 0);
         }
+        
+        context.restore();
     });
 });
 
+// 啟動
 spawnNextFruit();
 </script>
 </body>
