@@ -177,11 +177,40 @@ Events.on(engine, 'collisionStart', (event) => {
 });
 
 // 負責把沒有圖片的水果畫上 Emoji 表情
+// --- 升級版：自動將正方形圖片裁剪成圓形並旋轉 ---
 Events.on(render, 'afterRender', () => {
     const context = render.context;
     const bodies = Composite.allBodies(world);
     
     bodies.forEach((body) => {
+        // 處理有圖片（texture）的水果
+        if (body.render && body.render.sprite && body.render.sprite.texture) {
+            const fruitConfig = FRUIT_TYPES[body.fruitLevel];
+            if (!fruitConfig) return;
+
+            // 取得圖片物件
+            const img = render.textures[body.render.sprite.texture];
+            if (img && img.complete) {
+                context.save();
+                // 移動畫布中心到水果的物理位置
+                context.translate(body.position.x, body.position.y);
+                context.rotate(body.angle);
+
+                // 核心：畫一個圓形裁剪區域 (Clip)
+                context.beginPath();
+                context.arc(0, 0, fruitConfig.radius, 0, Math.PI * 2);
+                context.closePath();
+                context.clip(); // 接下來畫的圖片，超出這個圓形的部分會被隱藏
+
+                // 繪製圖片
+                const size = fruitConfig.radius * 2;
+                context.drawImage(img, -fruitConfig.radius, -fruitConfig.radius, size, size);
+                
+                context.restore();
+            }
+        }
+        
+        // 處理沒有圖片、只顯示 Emoji 的小水果
         if (body.render && body.render.text) {
             const { content, size } = body.render.text;
             context.font = `${size}px Arial`;
