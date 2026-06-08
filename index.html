@@ -3,288 +3,234 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的期末大西瓜小遊戲</title>
+    <title>我的簡易西瓜遊戲</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <style>
         body {
             margin: 0;
             padding: 0;
-            background: linear-gradient(135deg, #ffe6e6, #e6f2ff);
-            font-family: 'Arial', sans-serif;
+            background-color: #f0f0f0;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            overflow: hidden;
+            font-family: Arial, sans-serif;
         }
-
-        h1 {
-            color: #333;
-            margin-bottom: 5px;
+        #game-container {
+            position: relative;
+            margin-top: 20px;
         }
-
         #score-board {
             font-size: 24px;
             font-weight: bold;
-            color: #ff4757;
-            margin-bottom: 15px;
+            margin-top: 10px;
+            color: #333;
         }
-
-        /* 遊戲畫布容器 */
-        #game-container {
-            position: relative;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-            border-radius: 10px;
-            overflow: hidden;
-            background-color: #fff;
-        }
-
-        /* 遊戲結束彈跳視窗 */
-        #game-over-modal {
-            display: none; /* 預設隱藏 */
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            z-index: 10;
-        }
-
-        #game-over-modal h2 {
-            font-size: 40px;
-            margin-bottom: 10px;
-            color: #ff4757;
-        }
-
-        #restart-btn {
-            padding: 12px 30px;
-            font-size: 18px;
-            background-color: #2ed573;
-            color: white;
-            border: none;
-            border-radius: 25px;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-
-        #restart-btn:hover {
-            background-color: #26af5f;
-            transform: scale(1.05);
+        #hint {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
         }
     </style>
 </head>
 <body>
 
-    <h1>🍉 期末大西瓜 🍉</h1>
     <div id="score-board">分數: <span id="score">0</span></div>
+    <div id="hint">左右移動滑鼠調整位置，點擊滑鼠左鍵釋放水果</div>
+    <div id="game-container"></div>
 
-    <div id="game-container">
-        <div id="game-over-modal">
-            <h2>GAME OVER</h2>
-            <p style="font-size: 20px; margin-bottom: 20px;">滿出來啦！</p>
-            <button id="restart-btn" onclick="resetGame()">再玩一局 🔄</button>
-        </div>
-    </div>
+<script>
+// --- 1. 遊戲基礎設定與水果資料 ---
+const { Engine, Render, Runner, Bodies, Composite, Body, Events } = Matter;
 
-    <script>
-        // --- 1. 初始化 Matter.js 模組 ---
-        const { Engine, Render, Runner, Bodies, Composite, Body, Events } = Matter;
+const container = document.getElementById('game-container');
+const scoreDisplay = document.getElementById('score');
 
-        const container = document.getElementById('game-container');
-        const scoreEl = document.getElementById('score');
-        const gameOverModal = document.getElementById('game-over-modal');
+const WIDTH = 450;
+const HEIGHT = 650;
+let score = 0;
+let currentFruit = null;
+let isReadyToDrop = true;
 
-        const width = 450;  // 遊戲畫面寬度
-        const height = 650; // 遊戲畫面高度
+// 水果進化鏈設定 (等級 0 到 10)
+const FRUIT_TYPES = [
+    { label: "🍒", radius: 15, color: "#ff4d4d", score: 1 },
+    { label: "🍓", radius: 22, color: "#ff7675", score: 3 },
+    { label: "🍇", radius: 30, color: "#a29bfe", score: 6 },
+    { label: "🍊", radius: 38, color: "#fdcb6e", score: 10 },
+    { label: "🍅", radius: 48, color: "#e17055", score: 15 },
+    { label: "🍎", radius: 58, color: "#d63031", score: 21 },
+    { label: "🍐", radius: 68, color: "#ffeaa7", score: 28 },
+    { label: "🍑", radius: 80, color: "#fab1a0", score: 36 },
+    { label: "🍍", radius: 92, color: "#fd79a8", score: 45 },
+    { label: "🍈", radius: 105, color: "#55efc4", score: 55 },
+    { label: "🍉", radius: 120, color: "#2ecc71", score: 66 }
+];
+
+// --- 2. 初始化物理引擎與渲染器 ---
+const engine = Engine.create({ gravity: { y: 1.2 } }); // 稍微增加重力感
+const world = engine.world;
+
+const render = Render.create({
+    element: container,
+    engine: engine,
+    options: {
+        width: WIDTH,
+        height: HEIGHT,
+        wireframes: false, // 關閉線框模式以顯示色彩
+        background: '#fff9e6'
+    }
+});
+
+Render.run(render);
+const runner = Runner.create();
+Runner.run(runner, engine);
+
+// --- 3. 建立遊戲邊界 (牆壁與地板) ---
+const wallOptions = { isStatic: true, render: { fillStyle: '#8d6e63' } };
+const ground = Bodies.rectangle(WIDTH / 2, HEIGHT - 10, WIDTH, 20, wallOptions);
+const leftWall = Bodies.rectangle(10, HEIGHT / 2, 20, HEIGHT, wallOptions);
+const rightWall = Bodies.rectangle(WIDTH - 10, HEIGHT / 2, 20, HEIGHT, wallOptions);
+Composite.add(world, [ground, leftWall, rightWall]);
+
+// --- 4. 水果生成邏輯 ---
+function createFruit(x, y, level, isStatic = false) {
+    const config = FRUIT_TYPES[level];
+    
+    // 建立圓形物體
+    const fruit = Bodies.circle(x, y, config.radius, {
+        isStatic: isStatic,
+        restitution: 0.2, // 彈性
+        friction: 0.1,   // 摩擦力
+        label: "fruit",
+        render: {
+            fillStyle: config.color
+        }
+    });
+    
+    // 自訂屬性供後續邏輯判斷
+    fruit.fruitLevel = level;
+    
+    // 畫出水果圖示 (利用 Matter.js 的 render text 技巧)
+    fruit.render.text = {
+        content: config.label,
+        size: config.radius * 1.2
+    };
+
+    return fruit;
+}
+
+// 準備下一顆投擲的水果 (只會出現 0~4 等級的小水果)
+function spawnNextFruit() {
+    if (!isReadyToDrop) return;
+    
+    const randomLevel = Math.floor(Math.random() * 5); // 0 到 4
+    // 預設生成在頂部中央
+    currentFruit = createFruit(WIDTH / 2, 50, randomLevel, true);
+    Composite.add(world, currentFruit);
+}
+
+// --- 5. 滑鼠操控與釋放 ---
+window.addEventListener('mousemove', (e) => {
+    if (!currentFruit || currentFruit.isStatic === false) return;
+    
+    // 獲取滑鼠在遊戲區域內的相對 X 座標
+    const rect = container.getBoundingClientRect();
+    let mouseX = e.clientX - rect.left;
+    
+    // 限制不超出牆壁
+    const minX = 30 + FRUIT_TYPES[currentFruit.fruitLevel].radius;
+    const maxX = WIDTH - 30 - FRUIT_TYPES[currentFruit.fruitLevel].radius;
+    if (mouseX < minX) mouseX = minX;
+    if (mouseX > maxX) mouseX = maxX;
+    
+    // 讓水果跟隨滑鼠左右移動
+    Body.setPosition(currentFruit, { x: mouseX, y: 50 });
+});
+
+window.addEventListener('click', () => {
+    if (!currentFruit || !isReadyToDrop) return;
+    
+    // 釋放水果：解除靜態狀態，讓它受重力下落
+    isReadyToDrop = false;
+    Body.setStatic(currentFruit, false);
+    
+    // 延遲 1 秒後才能投擲下一顆，防止連續狂點
+    setTimeout(() => {
+        isReadyToDrop = true;
+        spawnNextFruit();
+    }, 1000);
+});
+
+// --- 6. 核心：碰撞升級邏輯 ---
+Events.on(engine, 'collisionStart', (event) => {
+    const pairs = event.pairs;
+    
+    pairs.forEach((pair) => {
+        const bodyA = pair.bodyA;
+        const bodyB = pair.bodyB;
         
-        let engine, render, runner;
-        let score = 0;
-        let isGameOver = false;
-        let currentBall = null; // 當前等待落下的球
-
-        // --- 2. 水果等級設定 (半徑、顏色、分數) ---
-        const BALL_TYPES = [
-            { radius: 15, color: '#ff4d4d', score: 1 },  // 櫻桃
-            { radius: 23, color: '#ffaf40', score: 2 },  // 橘子
-            { radius: 32, color: '#fff200', score: 4 },  // 檸檬
-            { radius: 42, color: '#32ff7e', score: 8 },  // 奇異果
-            { radius: 55, color: '#7bc8f6', score: 16 }, // 番茄
-            { radius: 70, color: '#ae52d4', score: 32 }, // 葡萄
-            { radius: 90, color: '#ff4757', score: 64 }, // 大西瓜
-        ];
-
-        // --- 3. 初始化遊戲 ---
-        function initGame() {
-            score = 0;
-            scoreEl.innerText = score;
-            isGameOver = false;
-            gameOverModal.style.display = 'none';
-
-            // 創建物理引擎
-            engine = Engine.create({ gravity: { y: 1.5 } }); // 設定重力大小
-
-            // 創建渲染器
-            render = Render.create({
-                element: container,
-                engine: engine,
-                options: {
-                    width: width,
-                    height: height,
-                    wireframes: false, // 關閉線框模式，顯示色彩
-                    background: '#fafafa'
+        // 確保碰撞的兩者都是水果，且等級相同
+        if (bodyA.label === "fruit" && bodyB.label === "fruit") {
+            if (bodyA.fruitLevel === bodyB.fruitLevel) {
+                const currentLevel = bodyA.fruitLevel;
+                
+                // 如果已經是最大顆的西瓜，相撞就直接消失
+                if (currentLevel >= FRUIT_TYPES.length - 1) {
+                    Composite.remove(world, [bodyA, bodyB]);
+                    score += 100;
+                    scoreDisplay.innerText = score;
+                    return;
                 }
-            });
-
-            Render.run(render);
-            runner = Runner.create();
-            Runner.run(runner, engine);
-
-            // 創建遊戲邊界（左牆、右牆、地板）
-            const wallOptions = { isStatic: true, render: { fillStyle: '#333333' } };
-            const ground = Bodies.rectangle(width / 2, height - 10, width, 20, wallOptions);
-            const leftWall = Bodies.rectangle(10, height / 2, 20, height, wallOptions);
-            const rightWall = Bodies.rectangle(width - 10, height / 2, 20, height, wallOptions);
-            
-            Composite.add(engine.world, [ground, leftWall, rightWall]);
-
-            // 生成第一顆準備掉落的球
-            spawnNewBall();
-
-            // 監聽碰撞事件（處理合成邏輯）
-            Events.on(engine, 'collisionStart', handleCollision);
-        }
-
-        // --- 4. 生成新水果（停留在頂部跟隨滑鼠） ---
-        function spawnNewBall() {
-            if (isGameOver) return;
-
-            // 隨機生成前 3 等級的小水果
-            const typeIndex = Math.floor(Math.random() * 3);
-            const type = BALL_TYPES[typeIndex];
-
-            // 創建一個暫時不收重力影響的圓球
-            currentBall = Bodies.circle(width / 2, 50, type.radius, {
-                isStatic: true, // 先固定在空中
-                isSensor: true, // 避免此時與其他球碰撞
-                label: `ball_${typeIndex}`,
-                render: { fillStyle: type.color }
-            });
-
-            Composite.add(engine.world, currentBall);
-        }
-
-        // --- 5. 滑鼠移動與點擊控制 ---
-        // 監聽滑鼠在遊戲容器上的移動，讓球跟著滑鼠走
-        container.addEventListener('mousemove', (e) => {
-            if (!currentBall || isGameOver) return;
-            const rect = container.getBoundingClientRect();
-            let mouseX = e.clientX - rect.left;
-
-            // 限制球不能穿出牆壁
-            const radius = currentBall.circleRadius;
-            if (mouseX < 20 + radius) mouseX = 20 + radius;
-            if (mouseX > width - 20 - radius) mouseX = width - 20 - radius;
-
-            Body.setPosition(currentBall, { x: mouseX, y: 50 });
-        });
-
-        // 點擊滑鼠，球掉落
-        container.addEventListener('click', () => {
-            if (!currentBall || isGameOver) return;
-
-            // 讓球恢復物理特性（受重力影響、會發生碰撞）
-            Body.setStatic(currentBall, false);
-            currentBall.isSensor = false;
-
-            const ballReleased = currentBall;
-            currentBall = null; // 清空當前控制
-
-            // 檢查是否爆滿 (Game Over 判斷)
-            setTimeout(() => {
-                checkGameOver(ballReleased);
-            }, 1500); // 落下 1.5 秒後檢查是否還停留在頂部
-
-            // 1秒後生成下一顆球
-            setTimeout(spawnNewBall, 1000);
-        });
-
-        // --- 6. 處理水果碰撞與合成邏輯 ---
-        function handleCollision(event) {
-            const pairs = event.pairs;
-
-            pairs.forEach((pair) => {
-                const bodyA = pair.bodyA;
-                const bodyB = pair.bodyB;
-
-                // 確保兩個物體都還在世界中，且標籤相同（代表同等級水果）
-                if (bodyA.label.startsWith('ball_') && bodyA.label === bodyB.label) {
-                    const currentLevel = parseInt(bodyA.label.split('_')[1]);
-                    
-                    // 如果已經是最大級的大西瓜，就不再合成
-                    if (currentLevel >= BALL_TYPES.length - 1) return;
-
-                    // 計算合成後新球的位置（取兩個舊球的中心點）
-                    const newX = (bodyA.position.x + bodyB.position.x) / 2;
-                    const yA = bodyA.position.y;
-                    const yB = bodyB.position.y;
-                    // 修正 Y 軸位置避免重疊卡住
-                    const newY = Math.min(yA, yB); 
-
-                    // 加分
-                    score += BALL_TYPES[currentLevel].score;
-                    scoreEl.innerText = score;
-
-                    // 從物理世界移除舊球
-                    Composite.remove(engine.world, [bodyA, bodyB]);
-
-                    // 創建大一號的新球
-                    const nextLevel = currentLevel + 1;
-                    const nextType = BALL_TYPES[nextLevel];
-                    const newBall = Bodies.circle(newX, newY, nextType.radius, {
-                        label: `ball_${nextLevel}`,
-                        render: { fillStyle: nextType.color },
-                        restitution: 0.3 // 彈性
-                    });
-
-                    Composite.add(engine.world, newBall);
-                }
-            });
-        }
-
-        // --- 7. 檢查是否遊戲結束 ---
-        function checkGameOver(ball) {
-            // 如果球落定後，Y 軸座標還是高於 100（代表堆太高了）
-            if (ball && ball.position.y < 100 && !ball.isStatic) {
-                isGameOver = true;
-                gameOverModal.style.display = 'flex';
-                // 停止物理世界
-                Runner.stop(runner);
+                
+                // 計算兩個水果的中心點，作為新水果的生成位置
+                const newX = (bodyA.position.x + bodyB.position.x) / 2;
+                const newY = (bodyA.position.y + bodyB.position.y) / 2;
+                
+                // 防止重複觸發碰撞導致多次生成
+                // 藉由將 level 設為不同來標記已處理
+                bodyA.fruitLevel = -1;
+                bodyB.fruitLevel = -1;
+                
+                // 移除舊水果
+                Composite.remove(world, [bodyA, bodyB]);
+                
+                // 生成高一級的新水果
+                const nextFruit = createFruit(newX, newY, currentLevel + 1, false);
+                Composite.add(world, nextFruit);
+                
+                // 加分並更新畫面
+                score += FRUIT_TYPES[currentLevel].score;
+                scoreDisplay.innerText = score;
             }
         }
+    });
+});
 
-        // --- 8. 重設遊戲 ---
-        function resetGame() {
-            // 清除舊的世界與畫布內容
-            Composite.clear(engine.world, false);
-            Engine.clear(engine);
-            Render.stop(render);
-            render.canvas.remove();
-            render.canvas = null;
-            render.context = null;
-
-            // 重新開始
-            initGame();
+// --- 7. 優化：客製化渲染水果表情 (Emoji) ---
+// Matter.js 預設不支援文字，這裡用原生 Canvas 語法幫圓形畫上表情
+Events.on(render, 'afterRender', () => {
+    const context = render.context;
+    const bodies = Composite.allBodies(world);
+    
+    bodies.forEach((body) => {
+        if (body.render && body.render.text) {
+            const { content, size } = body.render.text;
+            context.font = `${size}px Arial`;
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.save();
+            context.translate(body.position.x, body.position.y);
+            context.rotate(body.angle);
+            context.fillText(content, 0, 0);
+            context.restore();
         }
+    });
+});
 
-        // 啟動遊戲！
-        initGame();
-    </script>
+// 啟動遊戲
+spawnNextFruit();
+
+</script>
 </body>
 </html>
 
