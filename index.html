@@ -46,6 +46,14 @@ const FRUIT_TYPES = [
     
     // 【西瓜範例】：這裡使用了外部的 PNG 圖片網址
     { 
+        label: "🍒", 
+        radius: 15, 
+        color: "#ff4d4d", 
+        score: 1, 
+        texture: "https://3c.yipee.cc/122682/", // 外部圖片網址
+        originalWidth: 299 // 這張網址圖片的原始寬度是 512 像素
+    }
+    { 
         label: "🍉", 
         radius: 120, 
         color: "#2ecc71", 
@@ -53,6 +61,7 @@ const FRUIT_TYPES = [
         texture: "https://3c.yipee.cc/122682/", // 外部圖片網址
         originalWidth: 512 // 這張網址圖片的原始寬度是 512 像素
     }
+    
 ];
 
 const engine = Engine.create({ gravity: { y: 1.2 } });
